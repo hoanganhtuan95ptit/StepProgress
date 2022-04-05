@@ -316,32 +316,45 @@ class StepProgressView : ViewGroup, View.OnClickListener {
         //Layout children sequentially
         children.forEach {
             when {
-                //step title
-                it is TextView && (it.tag as String == STEP_TITLE_TAG) -> {
-                    val centerPadding = (stepWidth - it.measuredWidth) / 2
-                    it.layout(left + centerPadding, top,
-                        left + it.measuredWidth + centerPadding, top + it.measuredHeight)
-                }
                 //step
                 it is TextView && (it.tag as String != STEP_TITLE_TAG) -> {
+                    
                     val centerPadding = (stepWidth - it.measuredWidth) / 2
+                    
                     it.layout(
                         left + it.marginLeft + centerPadding,
-                        top + it.marginTop,
+                        top + 0,
                         left + it.measuredWidth + centerPadding,
-                        top + it.measuredHeight + it.marginTop
+                        top + it.measuredHeight
                     )
+
                     left += it.measuredWidth + it.marginRight + it.marginLeft
+                }
+                //step title
+                it is TextView && (it.tag as String == STEP_TITLE_TAG) -> {
+
+                    val centerPadding = (stepWidth - it.measuredWidth) / 2
+                    val stepTitleTop = measuredHeight - paddingBottom - it.measuredHeight
+
+                    it.layout(
+                        left + centerPadding,
+                        stepTitleTop + 0,
+                        left + it.measuredWidth + centerPadding,
+                        stepTitleTop + it.measuredHeight
+                    )
                 }
                 //arc
                 else -> {
-                    val arcTop = ((b - t) - it.measuredHeight) / 2
+
+                    val arcTop = (step.measuredHeight - it.measuredHeight) / 2
+
                     it.layout(
                         left + it.marginStart,
-                        arcTop + titleTextMaxHeight / 2,
+                        arcTop + 0,
                         left + it.measuredWidth - it.marginEnd,
-                        arcTop + it.measuredHeight + titleTextMaxHeight / 2
+                        arcTop + it.measuredHeight
                     )
+
                     left += it.measuredWidth
                 }
             }
