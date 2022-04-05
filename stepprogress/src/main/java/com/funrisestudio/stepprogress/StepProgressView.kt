@@ -318,9 +318,9 @@ class StepProgressView : ViewGroup, View.OnClickListener {
             when {
                 //step
                 it is TextView && (it.tag as String != STEP_TITLE_TAG) -> {
-                    
+
                     val centerPadding = (stepWidth - it.measuredWidth) / 2
-                    
+
                     it.layout(
                         left + it.marginLeft + centerPadding,
                         top + 0,
@@ -346,7 +346,7 @@ class StepProgressView : ViewGroup, View.OnClickListener {
                 //arc
                 else -> {
 
-                    val arcTop = (step.measuredHeight - it.measuredHeight) / 2
+                    val arcTop = top + (step.measuredHeight - it.measuredHeight) / 2
 
                     it.layout(
                         left + it.marginStart,
