@@ -17,32 +17,28 @@ import androidx.core.view.*
 
 class StepProgressView : ViewGroup, View.OnClickListener {
 
+    private val colorDefault = ContextCompat.getColor(context, R.color.colorGrey)
+
     private val stepProgress = StepProgress()
-    private val drawableHelper = DrawableHelper()
 
-    private lateinit var ovalStrokeDrawable: Drawable
-    private lateinit var ovalStrokeInactiveDrawable: Drawable
-    private lateinit var ovalDrawable: Drawable
-    private lateinit var checkedDrawable: Drawable
-    private lateinit var arcActiveDrawable: ColorDrawable
-    private lateinit var arcInactiveDrawable: ColorDrawable
+    private var nodeCheckDrawable: Int = R.drawable.ic_check
+    private var nodeSelectDrawable: Int = R.drawable.ic_check
+    private var nodeUnselectDrawable: Int = R.drawable.ic_check
 
-    @ColorInt
-    private var textNodeTitleColor = ContextCompat.getColor(context, R.color.colorPrimary)
+    private var textNodeSelectColor = colorDefault
+    private var textNodeUnselectColor = colorDefault
 
-    @ColorInt
-    private var textNodeColor = ContextCompat.getColor(context, R.color.colorAccent)
+    private var arcSelectColor = colorDefault
+    private var arcUnselectColor = colorDefault
 
-    @ColorInt
-    private var nodeColor = ContextCompat.getColor(context, R.color.colorPrimary)
+    private var textNodeTitleColor = colorDefault
 
-    @ColorInt
-    private var arcColor = ContextCompat.getColor(context, R.color.colorAccent)
+    private lateinit var arcSelectDrawable: Drawable
+    private lateinit var arcUnselectDrawable: ColorDrawable
 
-    @ColorInt
-    private var colorInactive = ContextCompat.getColor(context, R.color.colorGrey)
-
+    private var nodes: List<String> = listOf()
     private var titles: List<String> = listOf()
+
     private var stepsCount = 1
     private var titlesEnabled = false
     private var nodeHeight = -1f
@@ -58,7 +54,9 @@ class StepProgressView : ViewGroup, View.OnClickListener {
 
     var onStepSelected: ((Int) -> Unit)? = null
 
-    constructor(context: Context) : super(context) { init() }
+    constructor(context: Context) : super(context) {
+        init()
+    }
 
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs) {
         context.theme.obtainStyledAttributes(attrs, R.styleable.StepProgressView, 0, 0).apply {
@@ -68,20 +66,27 @@ class StepProgressView : ViewGroup, View.OnClickListener {
                 if (stepsCount < 0) {
                     throw IllegalStateException("Steps count can't be a negative number")
                 }
-                colorInactive = getColor(R.styleable.StepProgressView_colorInactive, colorInactive)
+
+                nodeCheckDrawable = getResourceId(R.styleable.StepProgressView_nodeCheckDrawable, nodeCheckDrawable)
+                nodeSelectDrawable = getResourceId(R.styleable.StepProgressView_nodeSelectDrawable, nodeSelectDrawable)
+                nodeUnselectDrawable = getResourceId(R.styleable.StepProgressView_nodeUnselectDrawable, nodeUnselectDrawable)
+
+                textNodeSelectColor = getColor(R.styleable.StepProgressView_textNodeSelectColor, textNodeSelectColor)
+                textNodeUnselectColor = getColor(R.styleable.StepProgressView_textNodeUnselectColor, textNodeUnselectColor)
+
+                arcSelectColor = getColor(R.styleable.StepProgressView_arcSelectColor, arcSelectColor)
+                arcUnselectColor = getColor(R.styleable.StepProgressView_arcUnselectColor, arcUnselectColor)
+
                 //node setup
                 nodeHeight = getDimension(R.styleable.StepProgressView_nodeHeight, nodeHeight)
-                nodeColor = getColor(R.styleable.StepProgressView_nodeColor, nodeColor)
                 //arc setup
                 arcHeight = getDimension(R.styleable.StepProgressView_arcWidth, arcHeight)
                 arcPadding = getDimension(R.styleable.StepProgressView_arcPadding, arcPadding)
-                arcColor = getColor(R.styleable.StepProgressView_arcColor, arcColor)
                 //titles setup
                 titlesEnabled = getBoolean(R.styleable.StepProgressView_titlesEnabled, titlesEnabled)
                 textTitlePadding = getDimension(R.styleable.StepProgressView_textTitlePadding, textTitlePadding)
                 textNodeTitleSize = getDimensionPixelSize(R.styleable.StepProgressView_textNodeTitleSize, textNodeTitleSize)
                 textNodeSize = getDimensionPixelSize(R.styleable.StepProgressView_textNodeSize, textNodeSize)
-                textNodeColor = getColor(R.styleable.StepProgressView_textNodeColor, textNodeColor)
                 textNodeTitleColor = getColor(R.styleable.StepProgressView_textNodeTitleColor, textNodeTitleColor)
             } finally {
                 recycle()
@@ -91,14 +96,11 @@ class StepProgressView : ViewGroup, View.OnClickListener {
     }
 
     private fun init() {
-        ovalStrokeDrawable = drawableHelper.createStrokeOvalDrawable(context, nodeColor)
-        ovalStrokeInactiveDrawable = drawableHelper.createStrokeOvalDrawable(context, colorInactive)
-        ovalDrawable = drawableHelper.createOvalDrawable(nodeColor)
-        checkedDrawable = drawableHelper.createCheckDrawable(context, nodeColor)
-        arcActiveDrawable = ColorDrawable(arcColor)
-        arcInactiveDrawable = ColorDrawable(colorInactive)
+        arcSelectDrawable = ColorDrawable(arcSelectColor)
+        arcUnselectDrawable = ColorDrawable(arcUnselectColor)
 
         if (titlesEnabled) {
+            nodes = getDefaultTitles()
             titles = getDefaultTitles()
         }
         stepProgress.reset()
@@ -375,14 +377,16 @@ class StepProgressView : ViewGroup, View.OnClickListener {
 
     private fun textViewForStep(stepPosition: Int, isActive: Boolean): TextView {
         return TextView(context).apply {
-            text = (stepPosition + 1).toString()
-            background = if (isActive) {
-                setTextColor(textNodeColor)
-                ovalStrokeDrawable
+            text = nodes[stepPosition]
+
+            if (isActive) {
+                setTextColor(textNodeSelectColor)
+                setBackgroundResource(nodeSelectDrawable)
             } else {
-                setTextColor(colorInactive)
-                ovalStrokeInactiveDrawable
+                setTextColor(textNodeUnselectColor)
+                setBackgroundResource(nodeUnselectDrawable)
             }
+
             gravity = Gravity.CENTER
             layoutParams = getDefaultElementLayoutParams()
             setTextSize(TypedValue.COMPLEX_UNIT_PX, textNodeSize.toFloat())
@@ -401,10 +405,8 @@ class StepProgressView : ViewGroup, View.OnClickListener {
 
     private fun arcView(position: Int): ArcView {
         return ArcView(context).apply {
-            background = TransitionDrawable(arrayOf(arcInactiveDrawable, arcActiveDrawable))
-            layoutParams = LinearLayout.LayoutParams(
-                LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT
-            )
+            background = TransitionDrawable(arrayOf(arcUnselectDrawable, arcSelectDrawable))
+            layoutParams = LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
             tag = ARC_TAG_PREFIX + position
         }
     }
@@ -427,24 +429,24 @@ class StepProgressView : ViewGroup, View.OnClickListener {
         view?.let {
             when (newState) {
                 StepState.DONE -> {
-                    it.background = checkedDrawable
                     it.textSize = 0f
-                    it.setTextColor(textNodeColor)
+                    it.setTextColor(textNodeSelectColor)
+                    it.setBackgroundResource(nodeCheckDrawable)
                 }
                 StepState.SELECTED_DONE -> {
-                    it.background = ovalDrawable
                     it.setTextSize(TypedValue.COMPLEX_UNIT_PX, textNodeTitleSize.toFloat())
-                    it.setTextColor(ContextCompat.getColor(context, R.color.colorWhite))
+                    it.setTextColor(textNodeSelectColor)
+                    it.setBackgroundResource(nodeSelectDrawable)
                 }
                 StepState.SELECTED_UNDONE -> {
-                    it.background = ovalStrokeDrawable
                     it.setTextSize(TypedValue.COMPLEX_UNIT_PX, textNodeTitleSize.toFloat())
-                    it.setTextColor(textNodeColor)
+                    it.setTextColor(textNodeSelectColor)
+                    it.setBackgroundResource(nodeSelectDrawable)
                 }
                 else -> {
-                    it.background = ovalStrokeInactiveDrawable
                     it.setTextSize(TypedValue.COMPLEX_UNIT_PX, textNodeTitleSize.toFloat())
-                    it.setTextColor(colorInactive)
+                    it.setTextColor(textNodeUnselectColor)
+                    it.setBackgroundResource(nodeUnselectDrawable)
                 }
             }
         }
@@ -476,6 +478,7 @@ class StepProgressView : ViewGroup, View.OnClickListener {
         }
         this.stepsCount = stepsCount
         if (titles.size != stepsCount) {
+            nodes = getDefaultTitles()
             titles = getDefaultTitles()
         }
         resetView()
@@ -511,6 +514,16 @@ class StepProgressView : ViewGroup, View.OnClickListener {
      */
     fun setStepTitles(titles: List<String>) {
         this.titles = titles
+        resetView()
+        invalidate()
+    }
+
+    /**
+     * Set value for each step
+     * @param notes list of value to apply to step views. Size should be the same as steps count
+     */
+    fun setStepValues(notes: List<String>) {
+        this.nodes = notes
         resetView()
         invalidate()
     }
@@ -569,44 +582,6 @@ class StepProgressView : ViewGroup, View.OnClickListener {
      */
     fun setNodeTitleColor(@ColorInt color: Int) {
         textNodeTitleColor = color
-        resetView()
-    }
-
-    /**
-     * Change node text color
-     */
-    fun setNodeTextColor(@ColorInt color: Int) {
-        textNodeColor = color
-        resetView()
-    }
-
-    /**
-     * Change node color
-     */
-    fun setNodeColor(@ColorInt color: Int) {
-        nodeColor = color
-        ovalStrokeDrawable = drawableHelper.createStrokeOvalDrawable(context, nodeColor)
-        ovalDrawable = drawableHelper.createOvalDrawable(nodeColor)
-        checkedDrawable = drawableHelper.createCheckDrawable(context, nodeColor)
-        resetView()
-    }
-
-    /**
-     * Change node arc color
-     */
-    fun setNodeArcColor(@ColorInt color: Int) {
-        arcColor = color
-        arcActiveDrawable = ColorDrawable(arcColor)
-        resetView()
-    }
-
-    /**
-     * Change node color inactive
-     */
-    fun setNodeColorInactive(@ColorInt color: Int) {
-        colorInactive = color
-        ovalStrokeInactiveDrawable = drawableHelper.createStrokeOvalDrawable(context, colorInactive)
-        arcInactiveDrawable = ColorDrawable(colorInactive)
         resetView()
     }
 
